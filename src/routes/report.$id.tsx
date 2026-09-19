@@ -11,8 +11,17 @@ import {
   relativeTime,
   uploadPhoto,
   upvoteReport,
+  type Report,
   type Status,
 } from "@/lib/reports";
+
+type ReportPatch = Partial<Omit<Report, "id">>;
+
+type VerifyResult = {
+  verdict: "verified" | "flagged_unchanged" | "flagged_mismatch";
+  message: string;
+  hamming_distance: number;
+};
 
 export const Route = createFileRoute("/report/$id")({
   head: () => ({
@@ -42,6 +51,7 @@ function ReportDetail() {
   const [afterFile, setAfterFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
 
   const { data: report, isLoading } = useQuery({
     queryKey: ["report", id],
@@ -53,7 +63,7 @@ function ReportDetail() {
     await queryClient.invalidateQueries({ queryKey: ["reports"] });
   }
 
-  async function update(patch: Record<string, unknown>) {
+  async function update(patch: ReportPatch) {
     setBusy(true);
     setError(null);
     try {
@@ -87,6 +97,29 @@ function ReportDetail() {
     } catch (e) {
       console.error(e);
       setError(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runVerification() {
+    setBusy(true);
+    setError(null);
+    setVerifyResult(null);
+    try {
+      const { data, error: e } = await supabase.functions.invoke("verify-repair", {
+        body: { report_id: id },
+      });
+      if (e) throw e;
+      setVerifyResult(data as VerifyResult);
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setError(
+        e instanceof Error
+          ? `Verification check failed: ${e.message}`
+          : "Verification check failed.",
+      );
     } finally {
       setBusy(false);
     }
@@ -240,23 +273,49 @@ function ReportDetail() {
 
           {status === "Repaired" ? (
             <div className="rounded-xl border border-border bg-secondary p-4">
-              <p className="text-sm font-semibold">Verification: Pending CV Check</p>
+              <p className="text-sm font-semibold">Automated Repair Verification</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                A reviewer compares the before and after photos to confirm the repair is
-                real.
+                Compares the before/after photos (perceptual image-similarity check) to
+                catch an unchanged or mismatched "after" photo before closing the report.
               </p>
+
+              {verifyResult ? (
+                <div
+                  className={`mt-3 rounded-lg px-3 py-2 text-xs font-medium ${
+                    verifyResult.verdict === "verified"
+                      ? "bg-status-verified text-status-verified-foreground"
+                      : "bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {verifyResult.message}{" "}
+                  <span className="opacity-70">
+                    (difference score: {verifyResult.hamming_distance}/64)
+                  </span>
+                </div>
+              ) : null}
+
               <button
                 type="button"
                 disabled={busy}
-                // TODO: replace with automated CV verification call
-                onClick={() =>
-                  void update({ status: "Verified", verified_at: new Date().toISOString() })
-                }
+                onClick={() => void runVerification()}
                 className="mt-3 flex items-center gap-2 rounded-xl bg-status-verified-foreground px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
               >
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-                Mark as Verified
+                {busy ? "Checking…" : "Run Verification Check"}
               </button>
+
+              {verifyResult && verifyResult.verdict !== "verified" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void update({ status: "Verified", verified_at: new Date().toISOString() })
+                  }
+                  className="mt-3 ml-2 rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary"
+                >
+                  Override & Verify Manually
+                </button>
+              ) : null}
             </div>
           ) : null}
 
