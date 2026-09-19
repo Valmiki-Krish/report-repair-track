@@ -1,4 +1,5 @@
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { Link } from "@tanstack/react-router";
 import { STATUS_COLORS, isStatus, type Report } from "@/lib/reports";
