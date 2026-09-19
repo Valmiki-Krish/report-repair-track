@@ -14,13 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      reports: {
+        Row: {
+          address: string | null
+          after_photo_url: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          latitude: number
+          longitude: number
+          photo_url: string
+          reporter_name: string | null
+          status: string
+          updated_at: string
+          upvotes: number
+          verified_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          after_photo_url?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          latitude: number
+          longitude: number
+          photo_url: string
+          reporter_name?: string | null
+          status?: string
+          updated_at?: string
+          upvotes?: number
+          verified_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          after_photo_url?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          photo_url?: string
+          reporter_name?: string | null
+          status?: string
+          updated_at?: string
+          upvotes?: number
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      upvote_report: { Args: { report_id: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never
