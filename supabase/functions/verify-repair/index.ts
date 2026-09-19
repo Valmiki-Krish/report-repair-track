@@ -1,5 +1,5 @@
 // supabase/functions/verify-repair/index.ts
-//
+// 
 // Compares a report's "before" and "after" photos and returns a similarity
 // verdict, instead of letting anyone click "Mark as Verified" with no check.
 //
