@@ -1,0 +1,2 @@
+CREATE POLICY "Public read report photos" ON storage.objects FOR SELECT USING (bucket_id = 'report-photos');
+CREATE POLICY "Anyone can upload report photos" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'report-photos');
