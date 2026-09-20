@@ -41,17 +41,64 @@ function corsHeaders() {
   };
 }
 
+type Decoded = { width: number; height: number; data: Uint8Array }; // RGBA
+
+/**
+ * Pure-JS decoding (no native/wasm addons — the edge runtime has no arch
+ * support for those). Handles the JPEG/PNG uploads the app accepts.
+ */
+async function decode(bytes: Uint8Array): Promise<Decoded> {
+  const isPng =
+    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+
+  if (isPng) {
+    const { decode: decodePng } = await import("npm:fast-png@6.2.0");
+    const png = decodePng(bytes);
+    const channels = png.channels ?? 4;
+    const src = png.data as unknown as ArrayLike<number>;
+    const out = new Uint8Array(png.width * png.height * 4);
+    for (let i = 0; i < png.width * png.height; i++) {
+      const s = i * channels;
+      if (channels >= 3) {
+        out[i * 4] = src[s];
+        out[i * 4 + 1] = src[s + 1];
+        out[i * 4 + 2] = src[s + 2];
+      } else {
+        out[i * 4] = out[i * 4 + 1] = out[i * 4 + 2] = src[s];
+      }
+      out[i * 4 + 3] = 255;
+    }
+    return { width: png.width, height: png.height, data: out };
+  }
+
+  const jpeg = await import("npm:jpeg-js@0.4.4");
+  const img = jpeg.default.decode(bytes, { useTArray: true });
+  return { width: img.width, height: img.height, data: new Uint8Array(img.data) };
+}
+
+/** Box-downsample to 8x8 grayscale, then average-hash. */
 async function averageHash(bytes: Uint8Array): Promise<bigint> {
-  const { Image } = await import("npm:imagescript@1.3.0");
-  const img = await Image.decode(bytes);
-  img.resize(8, 8);
+  const img = await decode(bytes);
 
   let sum = 0;
   const gray: number[] = [];
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
-      const [r, g, b] = Image.colorToRGBA(img.getPixelAt(x + 1, y + 1));
-      const v = (r + g + b) / 3;
+  for (let gy = 0; gy < 8; gy++) {
+    for (let gx = 0; gx < 8; gx++) {
+      const x0 = Math.floor((gx * img.width) / 8);
+      const x1 = Math.max(x0 + 1, Math.floor(((gx + 1) * img.width) / 8));
+      const y0 = Math.floor((gy * img.height) / 8);
+      const y1 = Math.max(y0 + 1, Math.floor(((gy + 1) * img.height) / 8));
+
+      let acc = 0;
+      let n = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const i = (y * img.width + x) * 4;
+          acc += (img.data[i] + img.data[i + 1] + img.data[i + 2]) / 3;
+          n++;
+        }
+      }
+      const v = acc / n;
       gray.push(v);
       sum += v;
     }
