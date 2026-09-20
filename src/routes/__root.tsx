@@ -78,11 +78,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "FixTrack — Civic Issue Reporting & Repair Tracking" },
+      {
+        name: "description",
+        content:
+          "Report potholes and civic issues with a photo, then track them from Reported to Verified repair.",
+      },
+      { name: "author", content: "Team B3TTERBYTES" },
+      { property: "og:title", content: "FixTrack — Civic Issue Reporting & Repair Tracking" },
+      {
+        property: "og:description",
+        content: "Transparent pothole complaint-to-repair tracking for your city.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
